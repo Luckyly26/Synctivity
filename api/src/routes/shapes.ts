@@ -35,4 +35,3 @@ headers.delete("content-length");
 
 return new Response (res.body, {status: res.status, headers});
 });
-
