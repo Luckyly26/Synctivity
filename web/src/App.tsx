@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useShape } from '@electric-sql/react';
 import './styles.css';
+import WorkoutExercise from './components/WorkoutExercise';
+import { createSet } from './workout-draft';
+import type { Exercise, WorkoutExerciseDraft } from './workout-draft';
 
-type Exercise = { id: string; name: string; muscle_group: string | null };
 type Page = 'workout' | 'history' | 'exercises';
 const SHAPE_URL = new URL('/api/shape', window.location.origin).href;
 const pages: { id: Page; label: string; icon: string }[] = [
@@ -28,7 +30,7 @@ function Dumbbell() {
 export default function App() {
   const [page, setPage] = useState<Page>('workout');
   const [active, setActive] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [draft, setDraft] = useState<WorkoutExerciseDraft[]>([]);
   const [search, setSearch] = useState('');
   const [online, setOnline] = useState(navigator.onLine);
   const {
@@ -55,13 +57,62 @@ export default function App() {
       .toLocaleLowerCase('de')
       .includes(search.toLocaleLowerCase('de')),
   );
-  const chosen = exercises.filter((exercise) => selected.includes(exercise.id));
-  const toggle = (id: string) =>
-    setSelected((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  const selected = draft.map((entry) => entry.exercise.id);
+  const totalSets = draft.reduce(
+    (total, entry) => total + entry.sets.length,
+    0,
+  );
+  const toggle = (id: string) => {
+    if (selected.includes(id)) {
+      setDraft((current) =>
+        current.filter((entry) => entry.exercise.id !== id),
+      );
+      return;
+    }
+    const exercise = exercises.find((item) => item.id === id);
+    if (exercise) {
+      const entry = { exercise: { ...exercise }, sets: [createSet()] };
+      setDraft((current) => [...current, entry]);
+    }
+  };
+  const addSet = (exerciseId: string) => {
+    const set = createSet();
+    setDraft((current) =>
+      current.map((entry) =>
+        entry.exercise.id === exerciseId
+          ? { ...entry, sets: [...entry.sets, set] }
+          : entry,
+      ),
     );
+  };
+  const removeSet = (exerciseId: string, setId: string) => {
+    setDraft((current) =>
+      current.map((entry) =>
+        entry.exercise.id === exerciseId
+          ? { ...entry, sets: entry.sets.filter((set) => set.id !== setId) }
+          : entry,
+      ),
+    );
+  };
+  const updateSet = (
+    exerciseId: string,
+    setId: string,
+    field: 'weightKg' | 'reps',
+    value: string,
+  ) => {
+    setDraft((current) =>
+      current.map((entry) =>
+        entry.exercise.id === exerciseId
+          ? {
+              ...entry,
+              sets: entry.sets.map((set) =>
+                set.id === setId ? { ...set, [field]: value } : set,
+              ),
+            }
+          : entry,
+      ),
+    );
+  };
 
   return (
     <div className="app-shell">
@@ -159,7 +210,7 @@ export default function App() {
                     <span className="status-dot" />
                     {active ? 'BUILD YOUR WORKOUT' : 'GET ACTIVE'}
                   </span>
-                  <h2 id="training-heading">
+                  <h2 id="workout-heading">
                     {active ? (
                       <>
                         Your Workout.
@@ -176,7 +227,7 @@ export default function App() {
                   </h2>
                   <p>
                     {active
-                      ? 'Choose exercises from the catalog for your workout.'
+                      ? 'Add your sets, weight and reps. Build your workout at your own pace.'
                       : 'Get started. Build your workout from your favorite exercises.'}
                   </p>
                   <button
@@ -198,40 +249,37 @@ export default function App() {
                 </div>
               </section>
               <div className="section-heading">
-                <h2>
-                  {active ? 'Your Exercise Selection' : 'Ready When You Are'}
-                </h2>
+                <h2>{active ? 'Your Workout Sets' : 'Ready When You Are'}</h2>
                 <span className="tag">
-                  {active ? `${chosen.length} Exercises` : 'YOUR START'}
+                  {active
+                    ? `${draft.length} Exercises · ${totalSets} Sets`
+                    : 'YOUR START'}
                 </span>
               </div>
               {active ? (
                 <section className="panel">
                   <p className="notice">
-                    Entwurf nur für diese Sitzung. Speichern und Satzerfassung
-                    folgen; beim Neuladen geht die Auswahl verloren.
+                    Session draft only. Your exercises and sets are not saved
+                    yet and will be lost on reload.
                   </p>
-                  {chosen.length ? (
-                    <ul className="exercise-list">
-                      {chosen.map((exercise, index) => (
-                        <li key={exercise.id}>
-                          <span className="exercise-number">
-                            {String(index + 1).padStart(2, '0')}
-                          </span>
-                          <div>
-                            <strong>{exercise.name}</strong>
-                            <p>{exercise.muscle_group ?? 'No Muscle Group'}</p>
-                          </div>
-                          <button
-                            className="text-button"
-                            onClick={() => toggle(exercise.id)}
-                            aria-label={`${exercise.name} remove`}
-                          >
-                            Remove
-                          </button>
-                        </li>
+                  {draft.length ? (
+                    <div className="workout-exercises">
+                      {draft.map((entry, index) => (
+                        <WorkoutExercise
+                          key={entry.exercise.id}
+                          draft={entry}
+                          index={index}
+                          onAddSet={() => addSet(entry.exercise.id)}
+                          onRemoveSet={(setId) =>
+                            removeSet(entry.exercise.id, setId)
+                          }
+                          onUpdateSet={(setId, field, value) =>
+                            updateSet(entry.exercise.id, setId, field, value)
+                          }
+                          onRemoveExercise={() => toggle(entry.exercise.id)}
+                        />
                       ))}
-                    </ul>
+                    </div>
                   ) : (
                     <div className="empty-state">
                       <h3>Weak Selection so far.</h3>
@@ -343,7 +391,7 @@ export default function App() {
                   className="primary-button catalog-action"
                   onClick={() => setPage('workout')}
                 >
-                  To the Workouts ({chosen.length}){' '}
+                  To the Workouts ({draft.length}){' '}
                   <span aria-hidden="true">↗</span>
                 </button>
               )}
