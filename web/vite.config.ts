@@ -7,5 +7,10 @@ export default defineConfig({
     proxy: {
       "/api": "http://localhost:8787",
     }
-  }
+  },
+  resolve: { dedupe: ["react", "react-dom"]
+  },
+  optimizeDeps: {
+    exclude: ["@electric-sql/pglite"],
+  },
 });
