@@ -1,7 +1,7 @@
 import {Hono} from "hono";
 import {ELECTRIC_PROTOCOL_QUERY_PARAMS} from "@electric-sql/client";
 
-const ALLOWED_TABLES = ["exercises", "workouts", "workout-sets"];
+const ALLOWED_TABLES = ["exercises", "workouts", "workout_sets"];
 const ELECTRIC_URL = process.env.ELECTRIC_URL ?? "http://localhost:3000";
 const ELECTRIC_SECRET = process.env.ELECTRIC_SECRET;
 
