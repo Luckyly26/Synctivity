@@ -1,33 +1,22 @@
 import { useState } from 'react';
-import { useShape } from '@electric-sql/react';
 import './styles.css';
 import Dumbbell from './components/Dumbbell.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import Topbar from './components/Topbar.tsx';
 import { useOnlineStatus } from './hooks/useOnlineStatus.ts';
 import { useWorkoutDraft } from './hooks/useWorkoutDraft.ts';
-import type { Exercise } from './workout-draft';
+import { useExercises } from './hooks/useExercises.ts';
 import type { Page } from './navigation.ts';
 import HistoryPage from './pages/HistoryPage.tsx';
 import WorkoutPage from './pages/WorkoutPage.tsx';
 import ExercisesPage from './pages/ExercisesPage.tsx';
-
-const SHAPE_URL = new URL('/api/shape', window.location.origin).href;
 
 export default function App() {
   const [page, setPage] = useState<Page>('workout');
   const [active, setActive] = useState(false);
   const [search, setSearch] = useState('');
   const online = useOnlineStatus();
-  const {
-    data: exercises,
-    isLoading,
-    error,
-  } = useShape<Exercise>({
-    url: SHAPE_URL,
-    params: { table: 'exercises' },
-  });
-
+  const { exercises, isLoading } = useExercises();
   const { draft, selected, totalSets, toggle, addSet, removeSet, updateSet } =
     useWorkoutDraft(exercises);
 
@@ -84,7 +73,6 @@ export default function App() {
               exercises={exercises}
               search={search}
               onSetSearch={setSearch}
-              error={error}
               isLoading={isLoading}
               filtered={filtered}
               selected={selected}

@@ -1,12 +1,10 @@
 import type { Exercise, WorkoutExerciseDraft } from '../workout-draft.ts';
-import { FetchError } from '@electric-sql/client';
 
 type ExercisesProps = {
   active: boolean;
   exercises: Exercise[];
   search: string;
   onSetSearch: (search: string) => void;
-  error: boolean | FetchError;
   isLoading: boolean;
   filtered: Exercise[];
   selected: string[];
@@ -21,7 +19,6 @@ export default function ExercisesPage({
   exercises,
   search,
   onSetSearch,
-  error,
   isLoading,
   filtered,
   selected,
@@ -47,15 +44,7 @@ export default function ExercisesPage({
         onChange={(event) => onSetSearch(event.target.value)}
       />
       <div aria-live="polite">
-        {error ? (
-          <div className="empty-state">
-            <h3>Exercises currently not available.</h3>
-            <p>
-              Check if the API and ElectricSQL are running and a connection is
-              established.
-            </p>
-          </div>
-        ) : isLoading ? (
+        {isLoading ? (
           <p className="loading">Exercises are loading …</p>
         ) : filtered.length ? (
           <ul className="exercise-list">
